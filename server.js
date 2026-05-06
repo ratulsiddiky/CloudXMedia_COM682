@@ -13,9 +13,21 @@ dotenv.config();
 
 const app = express();
 
-app.use(helmet());
-app.use(cors());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "blob:", "https://*.blob.core.windows.net"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        connectSrc: ["'self'"],
+      },
+    },
+  })
+);
 
+app.use(cors());
 app.use(compression());
 
 
