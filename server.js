@@ -5,11 +5,16 @@ import { fileURLToPath } from "url";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import mediaRoutes from "./src/routes/media.routes.js";
+import helmet from "helmet";
+import cors from "cors";
+
 
 dotenv.config();
 
 const app = express();
 
+app.use(helmet());
+app.use(cors());
 
 app.use(compression());
 

@@ -86,6 +86,11 @@ function addCard(item, options = {}) {
   titleEl.textContent = item.title;
   meta.appendChild(titleEl);
 
+  const editBtn = document.createElement("button");
+  editBtn.textContent = "Edit Title";
+  editBtn.addEventListener("click", () => editTitle(item.id, titleEl));
+  meta.appendChild(editBtn);
+
   const btn = document.createElement("button");
   btn.className = "danger";
   btn.textContent = "Delete";
@@ -117,4 +122,26 @@ async function del(id) {
 
   const card = document.querySelector(`[data-id="${id}"]`);
   if (card) card.remove();
+}
+
+async function editTitle(id, titleEl) {
+  const newTitle = prompt("Enter new title:", titleEl.textContent);
+  if (!newTitle || !newTitle.trim()) return;
+
+  const res = await fetch(`/api/media/${encodeURIComponent(id)}?userId=${encodeURIComponent(USER_ID)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: newTitle.trim(), userId: USER_ID })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data.ok) {
+    console.error(data);
+    alert(data.error || "Update failed");
+    return;
+  }
+
+  titleEl.textContent = data.item.title;
+  setStatus("Title updated.");
 }

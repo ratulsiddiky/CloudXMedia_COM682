@@ -113,6 +113,39 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// UPDATE
+router.put("/:id", async (req, res) => {
+  try {
+    const userId = req.body.userId || req.query.userId || DEFAULT_USER_ID;
+    const { id } = req.params;
+    const title = (req.body.title || "").trim();
+
+    if (!title) {
+      return res.status(400).json({ ok: false, error: "title is required" });
+    }
+
+    const container = getCosmosContainer();
+    const { resource } = await container.item(id, userId).read();
+
+    if (!resource) {
+      return res.status(404).json({ ok: false, error: "Not found" });
+    }
+
+    const updated = {
+      ...resource,
+      title,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await container.item(id, userId).replace(updated);
+
+    res.json({ ok: true, item: updated });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, error: "Internal server error" });
+  }
+});
+
 // DELETE
 router.delete("/:id", async (req, res) => {
   try {
