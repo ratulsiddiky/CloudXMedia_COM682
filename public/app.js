@@ -39,14 +39,16 @@ async function upload() {
   setStatus("Upload success.");
   addCard(data.item, { prepend: true });
 
-  // Clear inputs AFTER successful upload
+  
   document.getElementById("title").value = "";
   document.getElementById("file").value = "";
 }
 
 async function load() {
   setStatus("Loading...");
-  const res = await fetch(`/api/media?userId=${encodeURIComponent(USER_ID)}`);
+
+  
+  const res = await fetch(`/api/media?userId=${encodeURIComponent(USER_ID)}&limit=20`);
   const data = await res.json();
 
   if (!res.ok || !data.ok) {
