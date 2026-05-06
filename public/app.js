@@ -37,7 +37,11 @@ async function upload() {
   }
 
   setStatus("Upload success.");
-  await load();
+  addCard(data.item, { prepend: true });
+
+  // Clear inputs AFTER successful upload
+  document.getElementById("title").value = "";
+  document.getElementById("file").value = "";
 }
 
 async function load() {
@@ -53,21 +57,46 @@ async function load() {
   }
 
   galleryEl.innerHTML = "";
+
   for (const item of data.items) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerHTML = `
-      <img src="${item.blobUrl}" alt="${item.title}">
-      <div class="meta">
-        <div class="title">${item.title}</div>
-        <button class="danger">Delete</button>
-      </div>
-    `;
-    card.querySelector("button").addEventListener("click", () => del(item.id));
-    galleryEl.appendChild(card);
+    addCard(item);
   }
 
   setStatus(`Loaded ${data.items.length} item(s).`);
+}
+
+function addCard(item, options = {}) {
+  const card = document.createElement("div");
+  card.className = "card";
+  card.dataset.id = item.id;
+
+  const img = document.createElement("img");
+  img.src = item.blobUrl;
+  img.alt = item.title;
+  img.loading = "lazy";
+  card.appendChild(img);
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "title";
+  titleEl.textContent = item.title;
+  meta.appendChild(titleEl);
+
+  const btn = document.createElement("button");
+  btn.className = "danger";
+  btn.textContent = "Delete";
+  btn.addEventListener("click", () => del(item.id));
+  meta.appendChild(btn);
+
+  card.appendChild(meta);
+
+  if (options.prepend) {
+    galleryEl.prepend(card);
+  } else {
+    galleryEl.appendChild(card);
+  }
 }
 
 async function del(id) {
@@ -84,5 +113,6 @@ async function del(id) {
     return;
   }
 
-  await load();
+  const card = document.querySelector(`[data-id="${id}"]`);
+  if (card) card.remove();
 }

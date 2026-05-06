@@ -5,7 +5,12 @@ import { uploadToBlob, deleteFromBlob } from "../azure/blob.js";
 import { getCosmosContainer } from "../azure/cosmos.js";
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } 
+});
 
 const DEFAULT_USER_ID = process.env.DEFAULT_USER_ID || "student-123";
 
@@ -13,7 +18,7 @@ function getUserId(req) {
   return req.body.userId || req.query.userId || DEFAULT_USER_ID;
 }
 
-// CREATE: upload file -> blob -> cosmos metadata
+
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
     const title = (req.body.title || "").trim();
@@ -22,6 +27,11 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 
     if (!title) return res.status(400).json({ ok: false, error: "title is required" });
     if (!file) return res.status(400).json({ ok: false, error: "file is required" });
+
+ 
+    if (!file.mimetype.startsWith("image/")) {
+      return res.status(400).json({ ok: false, error: "Only image uploads allowed" });
+    }
 
     const id = nanoid();
     const safeName = file.originalname.replace(/[^\w.\-]/g, "_");
@@ -35,7 +45,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 
     const doc = {
       id,
-      userId,               // partition key
+      userId,
       title,
       blobUrl,
       blobName,
@@ -51,14 +61,16 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     res.json({ ok: true, item: doc });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(500).json({ ok: false, error: "Internal server error" });
   }
 });
 
-// READ ALL (by userId)
+
 router.get("/", async (req, res) => {
   try {
     const userId = req.query.userId || DEFAULT_USER_ID;
+    const limit = parseInt(req.query.limit) || 20;
+
     const container = getCosmosContainer();
 
     const querySpec = {
@@ -66,15 +78,21 @@ router.get("/", async (req, res) => {
       parameters: [{ name: "@userId", value: userId }]
     };
 
-    const { resources } = await container.items.query(querySpec).fetchAll();
-    res.json({ ok: true, items: resources });
+    const iterator = container.items.query(querySpec, { maxItemCount: limit });
+    const page = await iterator.fetchNext();
+
+    res.json({
+      ok: true,
+      items: page.resources,
+      continuationToken: page.continuationToken || null
+    });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(500).json({ ok: false, error: "Internal server error" });
   }
 });
 
-// READ ONE
+
 router.get("/:id", async (req, res) => {
   try {
     const userId = req.query.userId || DEFAULT_USER_ID;
@@ -82,16 +100,17 @@ router.get("/:id", async (req, res) => {
 
     const container = getCosmosContainer();
     const { resource } = await container.item(id, userId).read();
+
     if (!resource) return res.status(404).json({ ok: false, error: "Not found" });
 
     res.json({ ok: true, item: resource });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(500).json({ ok: false, error: "Internal server error" });
   }
 });
 
-// DELETE (good for top marks)
+
 router.delete("/:id", async (req, res) => {
   try {
     const userId = req.query.userId || DEFAULT_USER_ID;
@@ -99,6 +118,7 @@ router.delete("/:id", async (req, res) => {
 
     const container = getCosmosContainer();
     const { resource } = await container.item(id, userId).read();
+
     if (!resource) return res.status(404).json({ ok: false, error: "Not found" });
 
     await container.item(id, userId).delete();
@@ -107,7 +127,7 @@ router.delete("/:id", async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(500).json({ ok: false, error: "Internal server error" });
   }
 });
 
