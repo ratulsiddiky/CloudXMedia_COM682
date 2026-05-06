@@ -6,10 +6,9 @@ import { getCosmosContainer } from "../azure/cosmos.js";
 
 const router = express.Router();
 
-
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } 
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
 const DEFAULT_USER_ID = process.env.DEFAULT_USER_ID || "student-123";
@@ -18,7 +17,7 @@ function getUserId(req) {
   return req.body.userId || req.query.userId || DEFAULT_USER_ID;
 }
 
-
+// CREATE: upload file -> blob -> cosmos metadata
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
     const title = (req.body.title || "").trim();
@@ -28,8 +27,8 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     if (!title) return res.status(400).json({ ok: false, error: "title is required" });
     if (!file) return res.status(400).json({ ok: false, error: "file is required" });
 
- 
-    if (!file.mimetype.startsWith("image/")) {
+    // Only allow images
+    if (!file.mimetype || !file.mimetype.startsWith("image/")) {
       return res.status(400).json({ ok: false, error: "Only image uploads allowed" });
     }
 
@@ -40,19 +39,19 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     const { blobUrl } = await uploadToBlob({
       buffer: file.buffer,
       blobName,
-      contentType: file.mimetype
+      contentType: file.mimetype,
     });
 
     const doc = {
       id,
-      userId,
+      userId, // partition key
       title,
       blobUrl,
       blobName,
       fileName: file.originalname,
       contentType: file.mimetype,
       size: file.size,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     const container = getCosmosContainer();
@@ -65,17 +64,21 @@ router.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-
+// READ ALL (by userId) 
 router.get("/", async (req, res) => {
   try {
     const userId = req.query.userId || DEFAULT_USER_ID;
-    const limit = parseInt(req.query.limit) || 20;
+
+    // Clamp limit to avoid abuse/cost spikes
+    const rawLimit = parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 50) : 20;
 
     const container = getCosmosContainer();
 
     const querySpec = {
+      
       query: "SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC",
-      parameters: [{ name: "@userId", value: userId }]
+      parameters: [{ name: "@userId", value: userId }],
     };
 
     const iterator = container.items.query(querySpec, { maxItemCount: limit });
@@ -83,8 +86,8 @@ router.get("/", async (req, res) => {
 
     res.json({
       ok: true,
-      items: page.resources,
-      continuationToken: page.continuationToken || null
+      items: page.resources || [],
+      limit,
     });
   } catch (e) {
     console.error(e);
@@ -92,7 +95,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-
+// READ ONE
 router.get("/:id", async (req, res) => {
   try {
     const userId = req.query.userId || DEFAULT_USER_ID;
@@ -110,7 +113,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-
+// DELETE
 router.delete("/:id", async (req, res) => {
   try {
     const userId = req.query.userId || DEFAULT_USER_ID;
