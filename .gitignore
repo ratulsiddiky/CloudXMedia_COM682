@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+
+# dotenv environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# build / cache
+dist/
+build/
+.cache/
+.nyc_output/
+coverage/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Azure / deployment artifacts
+*.PublishSettings
+*.pubxml
+app.zip
+
+# temporary
+tmp/
+temp/
