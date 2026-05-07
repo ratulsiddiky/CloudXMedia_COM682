@@ -8,8 +8,8 @@ The application allows users to upload image files, view them in a gallery, upda
 
 ## Live Demo
 
-- App: `https://cloudxmedia-gallery-ratul.azurewebsites.net`
-- Health check: `https://cloudxmedia-gallery-ratul.azurewebsites.net/health`
+- App: `https://cloudxmedia-gallery-ratul-aygyhactajexh2f4.francecentral-01.azurewebsites.net`
+- Health check: `https://cloudxmedia-gallery-ratul-aygyhactajexh2f4.francecentral-01.azurewebsites.net`
 
 ---
 
