@@ -74,12 +74,12 @@ router.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-// READ ALL (by userId) 
+// READ ALL  
 router.get("/", async (req, res) => {
   try {
     const userId = req.query.userId || DEFAULT_USER_ID;
 
-    // Clamp limit to avoid abuse/cost spikes
+    // Clamp limit 
     const rawLimit = parseInt(req.query.limit, 10);
     const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 50) : 20;
 
@@ -87,7 +87,7 @@ router.get("/", async (req, res) => {
 
     const querySpec = {
       
-      query: "SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC",
+      query: "SELECT * FROM c WHERE c.userId = @userId AND (NOT IS_DEFINED(c.deleted) OR c.deleted = false) ORDER BY c.createdAt DESC",
       parameters: [{ name: "@userId", value: userId }],
     };
 
@@ -156,6 +156,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE
+// DELETE
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -163,10 +164,25 @@ router.delete("/:id", async (req, res) => {
     const container = getCosmosContainer();
     const resource = await findMediaById(container, id);
 
-    if (!resource) return res.status(404).json({ ok: false, error: "Not found" });
+    if (!resource) {
+      return res.status(404).json({ ok: false, error: "Not found" });
+    }
 
-    await container.item(resource.id, resource.userId).delete();
-    if (resource.blobName) await deleteFromBlob(resource.blobName);
+    const deletedDoc = {
+      ...resource,
+      deleted: true,
+      deletedAt: new Date().toISOString(),
+    };
+
+    await container.items.upsert(deletedDoc);
+
+    if (resource.blobName) {
+      try {
+        await deleteFromBlob(resource.blobName);
+      } catch (blobError) {
+        console.error("Blob delete failed but metadata was marked deleted:", blobError);
+      }
+    }
 
     res.json({ ok: true });
   } catch (e) {
