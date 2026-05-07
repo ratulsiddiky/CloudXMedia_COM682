@@ -3,37 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cloud Multimedia Gallery (CW2)</title>
+  <title>CloudXMedia | Cloud Media Dashboard</title>
   <link rel="stylesheet" href="/style.css"/>
   <link rel="icon" href="data:,">
 </head>
 <body>
-  <header>
-    <h1>My Cloud Gallery</h1>
-    <button id="btnRefresh">View Gallery</button>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-logo" aria-hidden="true"></span>
+      <div class="brand-copy">
+        <h1>CloudXMedia</h1>
+        <p>Cloud Media Dashboard</p>
+      </div>
+    </div>
+    <button id="btnRefresh" class="btn btn-gradient">View Gallery</button>
   </header>
 
-  <main>
-    <section class="panel">
-      <h2>Upload New Image</h2>
+  <main class="dashboard">
+    <section class="panel upload-panel">
+      <div class="panel-heading">
+        <h2>Upload Image</h2>
+        <p>Add your image to the cloud</p>
+      </div>
 
-      <label for="title">Title</label>
-      <input id="title" type="text" placeholder="Enter image title">
+      <div class="upload-grid">
+        <div class="field">
+          <label for="title">Title</label>
+          <input id="title" type="text" placeholder="Enter image title">
+        </div>
 
-      <label for="file">Choose image</label>
-      <input id="file" type="file" accept="image/*">
+        <div class="field">
+          <label for="file">Choose image</label>
+          <input id="file" type="file" accept="image/*">
+        </div>
+      </div>
 
-      <button id="btnUpload">Upload to Cloud</button>
-      <p id="status"></p>
+      <div class="action-row">
+        <button id="btnUpload" class="btn btn-gradient">Upload to Cloud</button>
+        <p id="status"></p>
+      </div>
     </section>
 
-    <section class="panel">
-      <h2>Gallery</h2>
+    <section class="panel gallery-panel">
+      <div class="panel-heading gallery-heading">
+        <span class="gallery-icon" aria-hidden="true"></span>
+        <div>
+          <h2>Your Gallery</h2>
+          <p>View all your uploaded images</p>
+        </div>
+      </div>
       <div id="gallery" class="grid"></div>
     </section>
   </main>
 
-  
   <script src="/app.js" defer></script>
 </body>
 </html>
