@@ -17,6 +17,16 @@ function getUserId(req) {
   return req.body.userId || req.query.userId || DEFAULT_USER_ID;
 }
 
+async function findMediaById(container, id) {
+  const querySpec = {
+    query: "SELECT * FROM c WHERE c.id = @id",
+    parameters: [{ name: "@id", value: id }],
+  };
+
+  const { resources } = await container.items.query(querySpec).fetchNext();
+  return resources?.[0] || null;
+}
+
 //  upload file -> blob -> cosmos metadata
 router.post("/upload", upload.single("file"), async (req, res) => {
   try {
@@ -116,7 +126,6 @@ router.get("/:id", async (req, res) => {
 // UPDATE
 router.put("/:id", async (req, res) => {
   try {
-    const userId = req.body.userId || req.query.userId || DEFAULT_USER_ID;
     const { id } = req.params;
     const title = (req.body.title || "").trim();
 
@@ -125,7 +134,7 @@ router.put("/:id", async (req, res) => {
     }
 
     const container = getCosmosContainer();
-    const { resource } = await container.item(id, userId).read();
+    const resource = await findMediaById(container, id);
 
     if (!resource) {
       return res.status(404).json({ ok: false, error: "Not found" });
@@ -137,11 +146,11 @@ router.put("/:id", async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
-    await container.item(id, userId).replace(updated);
+    await container.items.upsert(updated);
 
     res.json({ ok: true, item: updated });
   } catch (e) {
-    console.error(e);
+    console.error("Failed to update media item:", e);
     res.status(500).json({ ok: false, error: "Internal server error" });
   }
 });
@@ -149,20 +158,19 @@ router.put("/:id", async (req, res) => {
 // DELETE
 router.delete("/:id", async (req, res) => {
   try {
-    const userId = req.query.userId || DEFAULT_USER_ID;
     const { id } = req.params;
 
     const container = getCosmosContainer();
-    const { resource } = await container.item(id, userId).read();
+    const resource = await findMediaById(container, id);
 
     if (!resource) return res.status(404).json({ ok: false, error: "Not found" });
 
-    await container.item(id, userId).delete();
+    await container.item(resource.id, resource.userId).delete();
     if (resource.blobName) await deleteFromBlob(resource.blobName);
 
     res.json({ ok: true });
   } catch (e) {
-    console.error(e);
+    console.error("Failed to delete media item:", e);
     res.status(500).json({ ok: false, error: "Internal server error" });
   }
 });
